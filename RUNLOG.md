@@ -9,3 +9,9 @@ Hypothesis: Increased the model parameters to 1.9M
 Changes: block_size = 256, n_layer = 6, dropout = 0.1, tie_weights = True
 BPB Score: 2.8672
 {"bpb": 2.8672, "n_params": 1937920, "steps": 2000, "tokens_in_eval": 159225, "tokens_scored": 159224}
+
+Train 3
+Hypothesis: Decreased to original model size
+Changes: dynamic scheduling
+BPB Score: 2.6382
+{"bpb": 2.6382, "n_params": 1298880, "steps": 2000, "tokens_in_eval": 159225, "tokens_scored": 159224}
