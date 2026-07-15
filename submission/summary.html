@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plivo ML Assignment - 2,000 Step LLM Speedrun Summary</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+            background-color: #f9f9f9;
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 0.5rem;
+        }
+        .container {
+            background: #fff;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+        }
+        th, td {
+            padding: 12px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+        th {
+            background-color: #f4f7f6;
+            font-weight: 600;
+        }
+        .highlight {
+            background-color: #e8f4f8;
+            padding: 1rem;
+            border-left: 4px solid #3498db;
+            margin: 1.5rem 0;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>LLM Speedrun Submission Summary</h1>
+    
+    <h2>1. Architecture & Parameter Optimization</h2>
+    <p>To maximize performance strictly under the 2,000,000 parameter and 2,000 step limits, the baseline GPT-2 mechanics were heavily modified to align with modern LLM standards. The architecture was upgraded to utilize <strong>RMSNorm</strong> (replacing LayerNorm to skip mean-centering and speed up CPU matrix math) and <strong>SwiGLU</strong> blocks (replacing standard MLPs for significantly higher expressivity per parameter).</p>
+    <p>To solve the Devanagari sequence bottleneck, where Hindi characters were consuming 3 bytes each, a custom <strong>Byte-Pair Encoding (BPE) tokenizer</strong> was implemented. The tokenizer was trained on a 256KB subset of the corpus to prevent CPU hanging while effectively compressing the context window.</p>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Component</th>
+                <th>Configuration</th>
+                <th>Rationale</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Vocab Size</td>
+                <td>1,920</td>
+                <td>Custom BPE dictionary to compress English and Hindi bytes efficiently.</td>
+            </tr>
+            <tr>
+                <td>Block Size</td>
+                <td>256</td>
+                <td>Provides a wide context window without creating an O(N²) attention bottleneck.</td>
+            </tr>
+            <tr>
+                <td>Dimensions</td>
+                <td>Layers: 4 | Heads: 4 | Embed: 160</td>
+                <td>Perfectly balances the parameter-heavy SwiGLU blocks to stay under the limit.</td>
+            </tr>
+            <tr>
+                <td>Weight Tying</td>
+                <td>True</td>
+                <td>Shares token embeddings with the output head, freeing massive parameter budget.</td>
+            </tr>
+            <tr>
+                <td>Total Parameters</td>
+                <td>~1.98M</td>
+                <td>Safely utilizes 99% of the allowed budget.</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>2. Runlog Summary & Metric Defense</h2>
+    <p>The development process consisted of six tracked iterations. Early iterations focused on scaling dimensions, which initially failed due to exploding residual variance and noisy gradients from small batch sizes. The breakthrough occurred by implementing gradient accumulation (for a stable effective batch size) and a <strong>LambdaLR Cosine Scheduler</strong> with AdamW.</p>
+    
+    <div class="highlight">
+        <strong>Why this is the best metric:</strong> The final architecture dropped the BPB (Bits Per Byte) score from the 2.37 baseline down to 2.2484. This was achieved not by brute force, but by mathematically increasing the information density per sequence step (via BPE) and optimizing parameter allocation (via SwiGLU/Weight Tying) for maximum learning capacity within the constrained environment.
+    </div>
+
+    <h2>3. Human vs. Machine Contribution</h2>
+    <p><strong>Human Engineering (The Architect):</strong> The core mathematical strategy, architectural choices, and debugging logic were entirely human-driven. Deciding to implement SwiGLU over GELU, identifying the sequence-length bottleneck caused by Devanagari characters, enforcing weight tying, tuning the learning rate schedules, and halting the terminal when the BPE loop caused a CPU hang were all human engineering decisions. Drawing from a rigorous academic background in manufacturing science and engineering mechanics, the optimization approach was treated like a constrained industrial system.</p>
+    <p><strong>Machine Assistance (The Developer):</strong> The AI coding assistant was utilized as a syntax engine and boilerplate generator. It drafted the raw PyTorch class structures for RMSNorm and SwiGLU, generated the BPE merge logic based on standard algorithms, formatted the JSON evaluations, and generated this exact HTML summary file based on the provided run logs.</p>
+
+</div>
+
+</body>
+</html>
