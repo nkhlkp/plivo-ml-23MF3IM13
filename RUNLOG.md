@@ -1,0 +1,6 @@
+Train 1
+Hypothesis: Baseline run.
+Changes: None.
+BPB Score: 2.3718
+{"bpb": 2.3718, "n_params": 1339840, "steps": 2000, "tokens_in_eval": 159225, "tokens_scored": 159224}
+
