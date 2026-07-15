@@ -11,11 +11,11 @@ import torch.nn.functional as F
 
 class Config:
     vocab_size = 256      # byte-level tokenizer default
-    block_size = 128
-    n_layer = 4
+    block_size = 256  # Increased context
+    n_layer = 6       # Deeper network
     n_head = 4
     n_embd = 160
-    dropout = 0.0
+    dropout = 0.1
     tie_weights = True   # <- one of many things worth questioning
 
 
