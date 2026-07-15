@@ -1,30 +1,24 @@
-"""A small GPT in plain PyTorch. Yours to modify or replace entirely —
-attention, SSM, whatever — as long as evaluate.py still works and the
-parameter cap holds.
-"""
+"""Optimized GPT: Biases removed, weights tied, residual scaling applied."""
 import math
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 class Config:
-    vocab_size = 256      # byte-level tokenizer default
-    block_size = 128  # Same context
-    n_layer = 4       # Deeper network
-    n_head = 4
-    n_embd = 160
-    dropout = 0.1
-    tie_weights = True   # <- one of many things worth questioning
-
+    vocab_size = 256      
+    block_size = 128      # Optimized for CPU speed
+    n_layer = 6           # Scaled depth
+    n_head = 4            
+    n_embd = 160          # Scaled width
+    dropout = 0.0         
+    tie_weights = True    # Parameter efficiency
 
 class SelfAttention(nn.Module):
     def __init__(self, cfg):
         super().__init__()
         self.n_head = cfg.n_head
-        self.qkv = nn.Linear(cfg.n_embd, 3 * cfg.n_embd)
-        self.proj = nn.Linear(cfg.n_embd, cfg.n_embd)
+        self.qkv = nn.Linear(cfg.n_embd, 3 * cfg.n_embd, bias=False)
+        self.proj = nn.Linear(cfg.n_embd, cfg.n_embd, bias=False)
         self.drop = nn.Dropout(cfg.dropout)
 
     def forward(self, x):
@@ -37,7 +31,6 @@ class SelfAttention(nn.Module):
         y = y.transpose(1, 2).contiguous().view(B, T, C)
         return self.drop(self.proj(y))
 
-
 class Block(nn.Module):
     def __init__(self, cfg):
         super().__init__()
@@ -45,14 +38,13 @@ class Block(nn.Module):
         self.attn = SelfAttention(cfg)
         self.ln2 = nn.LayerNorm(cfg.n_embd)
         self.mlp = nn.Sequential(
-            nn.Linear(cfg.n_embd, 4 * cfg.n_embd), nn.GELU(),
-            nn.Linear(4 * cfg.n_embd, cfg.n_embd), nn.Dropout(cfg.dropout))
+            nn.Linear(cfg.n_embd, 4 * cfg.n_embd, bias=False), nn.GELU(),
+            nn.Linear(4 * cfg.n_embd, cfg.n_embd, bias=False), nn.Dropout(cfg.dropout))
 
     def forward(self, x):
         x = x + self.attn(self.ln1(x))
         x = x + self.mlp(self.ln2(x))
         return x
-
 
 class GPT(nn.Module):
     def __init__(self, cfg):
@@ -67,13 +59,17 @@ class GPT(nn.Module):
         if cfg.tie_weights:
             self.head.weight = self.tok_emb.weight
         self.apply(self._init)
+        
+        # Scale residual projections
+        for pn, p in self.named_parameters():
+            if pn.endswith('proj.weight'):
+                torch.nn.init.normal_(p, mean=0.0, std=(0.02 / math.sqrt(2 * cfg.n_layer)))
 
     def _init(self, m):
-        # baseline init: plain normal, one std for everything
         if isinstance(m, (nn.Linear, nn.Embedding)):
-            nn.init.normal_(m.weight, mean=0.0, std=0.05)
+            torch.nn.init.normal_(m.weight, mean=0.0, std=0.02)
             if isinstance(m, nn.Linear) and m.bias is not None:
-                nn.init.zeros_(m.bias)
+                torch.nn.init.zeros_(m.bias)
 
     def forward(self, idx, targets=None):
         B, T = idx.shape
